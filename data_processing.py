@@ -25,36 +25,32 @@ def load_data(data_filepath='./flavors_of_cacao.csv'):
     return data
 
 
-def toPercent(string):
-    # This function will convert a percentage string into a decimal variable
-    # The purpose is to convert cocoa_percent into a numerical value
-    return (float(string.strip('%')) / 100)
+def clean_bean_type(bean_type_col: pd.Series):
+    """Fills in missing values for bean type and recodes less common types as other to reduce cardinality."""
+    bean_type_col = bean_type_col.fillna("unknown", inplace=True).apply(lambda x: 'unknown' if x.strip() == '' else x)
+    bean_type_col = bean_type_col.apply(collapse_bean_type)
+    return bean_type_col
 
 
-def spaceToNan(datastring):
-    # function to turn all cells with strings of one space character into a numpy null
-    # if the input is not a string, it will return the original input
-    # if the input is not a single space, it will return the input
-    # This is meant to clean the bean_type feature
-    if type(datastring) == str:
-        if datastring.strip() == '':
-            return np.nan
-        else:
-            return datastring.strip()
+def collapse_bean_type(bean):
+    if bean == 'unknown':
+        label = 'unknown'
+    elif 'blend' in bean.lower() or ('forasetero' in bean.lower() and 'criollo' in bean.lower()) or (
+            'forasetero' in bean.lower() and 'trinitario' in bean.lower()):
+        label = 'blend'
+    elif 'forasetero' in bean.lower():
+        label = 'forasetero'
+    elif 'criollo' in bean.lower():
+        label = 'criollo'
+    elif 'trinitario' in bean.lower():
+        label = 'trinitario'
     else:
-        return datastring
+        label = 'other'
+    return label
 
-
-def nanToUnknown(datastring):
-    # function to turn all cells with the pandas null value into a string reading 'unknown'
-    # as stated below, the purpose is to relabel null values of bean_type as unknown
-    # this will allow us to use that feature to see if it is significant
-    # This has to be run after spaceToNan above
-    if pd.isna(datastring):
-        return 'unknown'
-
-    else:
-        return datastring
 
 if __name__ == '__main__':
-    pd.set_option('display.max_rows',100)
+    pd.set_option('display.max_rows', 100)
+    data = load_data()
+    data["bean_type"] = clean_bean_type(data['bean_type'])
+    data['cocoa_percent'] = data['cocoa_percent'].strip("%").astype(float) / 100
