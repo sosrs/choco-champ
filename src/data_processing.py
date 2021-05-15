@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def load_data(data_filepath='./flavors_of_cacao.csv'):
+def load_data(data_filepath='../data/flavors_of_cacao.csv'):
     data = pd.read_csv(data_filepath)
     # Simplify the column names
     # The reason for two versions is to handle Linux vs Windows newline special character conventions
@@ -27,12 +27,12 @@ def load_data(data_filepath='./flavors_of_cacao.csv'):
 
 def clean_bean_type(bean_type_col: pd.Series):
     """Fills in missing values for bean type and recodes less common types as other to reduce cardinality."""
-    bean_type_col = bean_type_col.fillna("unknown", inplace=True).apply(lambda x: 'unknown' if x.strip() == '' else x)
+    bean_type_col = bean_type_col.fillna("unknown").apply(lambda x: 'unknown' if x.strip() == '' else x)
     bean_type_col = bean_type_col.apply(collapse_bean_type)
     return bean_type_col
 
 
-def collapse_bean_type(bean):
+def collapse_bean_type(bean: str):
     if bean == 'unknown':
         label = 'unknown'
     elif 'blend' in bean.lower() or ('forasetero' in bean.lower() and 'criollo' in bean.lower()) or (
@@ -49,9 +49,17 @@ def collapse_bean_type(bean):
     return label
 
 
+def recode_bean_origin(bean_origin_col: pd.Series):
+    bean_origin_col = bean_origin_col.fillna("unknown").apply(lambda x: 'unknown' if x.strip() == '' else x)
+    bean_origin_col = bean_origin_col.apply(lambda x: 'multi' if ',' in x or '/' in x else x)
+    bean_origin_col.apply(lambda x: x if bean_origin_col.value_counts()[x] > 20 else 'other')
+    return bean_origin_col
+
+
 if __name__ == '__main__':
     pd.set_option('display.max_rows', 100)
     data = load_data()
     data["bean_type"] = clean_bean_type(data['bean_type'])
     data.drop(columns=['REF'], inplace=True)
-    data['cocoa_percent'] = data['cocoa_percent'].strip("%").astype(float) / 100
+    data['cocoa_percent'] = data['cocoa_percent'].str.strip("%").astype(float) / 100
+    data['bean_origin'] = recode_bean_origin(data['bean_origin'])
