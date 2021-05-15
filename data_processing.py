@@ -1,23 +1,26 @@
-import numpy as np
 import pandas as pd
 
-import matplotlib
-import matplotlib.pyplot as plt
-import seaborn as sns
-import re
 
-
-def load_data():
-    data = pd.read_csv('./chocolate-bar-ratings/flavors_of_cacao.csv')
+def load_data(data_filepath='./flavors_of_cacao.csv'):
+    data = pd.read_csv(data_filepath)
     # Simplify the column names
-    data.rename(columns={'Company\xa0\n(Maker-if known)': 'company',
-                         'Specific Bean Origin\nor Bar Name': 'bar_origin',
-                         'Review\nDate': 'review_year',
-                         'Cocoa\nPercent': 'cocoa_percent',
-                         'Company\nLocation': 'company_location',
-                         'Bean\nType': 'bean_type',
-                         'Broad Bean\nOrigin': 'bean_origin'},
-                inplace=True)
+    # The reason for two versions is to handle Linux vs Windows newline special character conventions
+    data = data.rename(columns={'Company\xa0\n(Maker-if known)': 'company',
+                                'Specific Bean Origin\nor Bar Name': 'bar_origin',
+                                'Review\nDate': 'review_year',
+                                'Cocoa\nPercent': 'cocoa_percent',
+                                'Company\nLocation': 'company_location',
+                                'Bean\nType': 'bean_type',
+                                'Broad Bean\nOrigin': 'bean_origin',
+
+                                'Company\xa0\r\n(Maker-if known)': 'company',
+                                'Specific Bean Origin\r\nor Bar Name': 'bar_origin',
+                                'Review\r\nDate': 'review_year',
+                                'Cocoa\r\nPercent': 'cocoa_percent',
+                                'Company\r\nLocation': 'company_location',
+                                'Bean\r\nType': 'bean_type',
+                                'Broad Bean\r\nOrigin': 'bean_origin',
+                                })
     data.index.name = 'id'
     return data
 
