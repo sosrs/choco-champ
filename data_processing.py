@@ -53,4 +53,5 @@ if __name__ == '__main__':
     pd.set_option('display.max_rows', 100)
     data = load_data()
     data["bean_type"] = clean_bean_type(data['bean_type'])
+    data.drop(columns=['REF'], inplace=True)
     data['cocoa_percent'] = data['cocoa_percent'].strip("%").astype(float) / 100
