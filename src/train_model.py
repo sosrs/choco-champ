@@ -52,9 +52,10 @@ def preprocess_for_random_forest(X_train, X_test):
 
 def nested_cross_validation(X_data, y_data):
     p_grid = {"n_estimators": [50, 100, 200], 'max_depth': [None, 3, 4]}
+    X_data = pd.get_dummies(X_data)
     rf = RandomForestRegressor()
-    NUM_TRIALS = 10
-    nested_scores = np.zeros(NUM_TRIALS)
+    NUM_TRIALS = 5
+    nested_scores = []
     # Loop for each trial
     for i in range(NUM_TRIALS):
         # Choose cross-validation techniques for the inner and outer loops,
@@ -64,16 +65,21 @@ def nested_cross_validation(X_data, y_data):
         outer_cv = KFold(n_splits=4, shuffle=True, random_state=i)
 
         # Non_nested parameter search and scoring
-        clf = GridSearchCV(estimator=rf, param_grid=p_grid, cv=inner_cv)
+        clf = GridSearchCV(estimator=rf, param_grid=p_grid, cv=inner_cv, n_jobs=4)
         clf.fit(X_data, y_data)
 
         # Nested CV with parameter optimization
-        nested_score = cross_val_score(clf, X=X_data, y=y_data, cv=outer_cv)
-        nested_scores[i] = nested_score
+        nested_score = cross_val_score(clf, X=X_data, y=y_data, cv=outer_cv, n_jobs=4)
+        nested_scores.append(nested_score)
+    return nested_scores
 
 
 if __name__ == "__main__":
     data = pd.read_pickle("../data/data_processed.pickle")
     X, y = split_features_labels(data)
-    baseline_errors = guess_from_mean(X, y)
+    baseline_errors = pd.DataFrame(guess_from_mean(X, y))
+    random_forest_scores = pd.DataFrame(nested_cross_validation(X, y))
+    random_forest_scores.to_pickle("../data/random_forest_scores.pickle")
     plot_errors(baseline_errors, "mean_guessing")
+    plot_errors(pd.concat([random_forest_scores[col] for col in random_forest_scores.columns]).reset_index().drop(columns=['index']),
+                name='random_forest_scores')
