@@ -63,3 +63,4 @@ if __name__ == '__main__':
     data.drop(columns=['REF'], inplace=True)
     data['cocoa_percent'] = data['cocoa_percent'].str.strip("%").astype(float) / 100
     data['bean_origin'] = recode_bean_origin(data['bean_origin'])
+    data.to_pickle("../data/data_processed.pickle")
