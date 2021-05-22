@@ -1,8 +1,10 @@
-import pandas as pd
 import pathlib
-from sklearn.model_selection import KFold
-from sklearn.metrics import mean_squared_error
+import pandas as pd
 import seaborn as sns
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import KFold, GridSearchCV, cross_val_score
+from sklearn.ensemble import RandomForestRegressor
+import numpy as np
 
 
 def guess_from_mean(X, y):
@@ -33,9 +35,45 @@ def plot_errors(errors, name):
     fig.savefig(plot_folder / (name + ".png"))
 
 
+def preprocess_for_random_forest(X_train, X_test):
+    X_train_processed = pd.get_dummies(X_train)
+    X_test_processed = pd.get_dummies(X_test)
+    # Get columns in the training set that are missing in test
+    # This arises due to the separate one-hot encoding processes.
+    missing_cols = set(X_train_processed.columns) - set(X_test_processed.columns)
+    # Add a missing column in test set with default value equal to 0
+    for c in missing_cols:
+        X_test_processed[c] = 0
+    X_train_processed, X_test_processed = X_train_processed.align(X_test_processed,
+                                                                  join='inner',
+                                                                  axis=1)  # inner join removes unshared columns
+    return X_train_processed, X_test_processed
+
+
+def nested_cross_validation(X_data, y_data):
+    p_grid = {"n_estimators": [50, 100, 200], 'max_depth': [None, 3, 4]}
+    rf = RandomForestRegressor()
+    NUM_TRIALS = 10
+    nested_scores = np.zeros(NUM_TRIALS)
+    # Loop for each trial
+    for i in range(NUM_TRIALS):
+        # Choose cross-validation techniques for the inner and outer loops,
+        # independently of the dataset.
+        # E.g "GroupKFold", "LeaveOneOut", "LeaveOneGroupOut", etc.
+        inner_cv = KFold(n_splits=4, shuffle=True, random_state=i)
+        outer_cv = KFold(n_splits=4, shuffle=True, random_state=i)
+
+        # Non_nested parameter search and scoring
+        clf = GridSearchCV(estimator=rf, param_grid=p_grid, cv=inner_cv)
+        clf.fit(X_data, y_data)
+
+        # Nested CV with parameter optimization
+        nested_score = cross_val_score(clf, X=X_data, y=y_data, cv=outer_cv)
+        nested_scores[i] = nested_score
+
+
 if __name__ == "__main__":
     data = pd.read_pickle("../data/data_processed.pickle")
     X, y = split_features_labels(data)
     baseline_errors = guess_from_mean(X, y)
     plot_errors(baseline_errors, "mean_guessing")
-
